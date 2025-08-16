@@ -69,9 +69,12 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_74B6E53033C34EA8B8CD7ECE368ADC3F }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_4322F9B4837040199A894BC10F49F340 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BBF3FFF8277842639ABC4B98ECAEF4EB }}
+                - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: 'f5094ca1-2fce-4255-9001-7e02ad07ae99'
+          tenant-id: 'c832fbd5-0067-462f-8c8f-f4207dc862a6'
+          subscription-id: '2fbff5f5-f746-439b-ae1e-ee61dba25629'
 
       - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
@@ -81,3 +84,4 @@ jobs:
           slot-name: 'Production'
           package: '.' # The package is the unzipped directory
           
+
