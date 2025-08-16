@@ -11,10 +11,17 @@
     </form>
     <p id="status"></p>
 
+    <h2>Uploaded Files</h2>
+    <ul id="file-list"></ul>
+
     <script>
         const form = document.getElementById("uploadForm");
         const status = document.getElementById("status");
+        const fileList = document.getElementById("file-list");
 
+        const functionUrl = "https://myserverlessapi-b9etdhaeddbbd2hp.centralindia-01.azurewebsites.net/api/FileHandler?code=XwVWsnww-fn9Mo04RrxEF_z7gdTAC9T5H3ODYvkocWdHAzFunVHByA==";
+
+        // Handle file upload
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
             const fileInput = document.getElementById("fileInput");
@@ -27,21 +34,17 @@
             const formData = new FormData();
             formData.append("file", file);
 
-            // Azure Function URL with function key
-            const url = "https://myserverlessapi-b9etdhaeddbbd2hp.centralindia-01.azurewebsites.net/api/FileHandler?code=<function-key>";
-
             status.innerText = "Uploading...";
 
             try {
-                const response = await fetch(url, {
+                const response = await fetch(functionUrl, {
                     method: "POST",
                     body: formData
                 });
-
                 const result = await response.json();
-
                 if (response.ok) {
                     status.innerHTML = `✅ File uploaded: <a href="${result.url}" target="_blank">${result.filename}</a>`;
+                    fetchFiles(); // refresh file list
                 } else {
                     status.innerText = `❌ Error: ${result.error || JSON.stringify(result)}`;
                 }
@@ -49,6 +52,26 @@
                 status.innerText = `❌ Upload failed: ${err}`;
             }
         });
+
+        // Fetch uploaded files
+        async function fetchFiles() {
+            try {
+                const res = await fetch(functionUrl, { method: "GET" });
+                const data = await res.json();
+                fileList.innerHTML = "";
+                data.files.forEach(file => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `<a href="${file.url}" target="_blank">${file.name}</a>`;
+                    fileList.appendChild(li);
+                });
+            } catch (err) {
+                fileList.innerHTML = `<li>Error fetching files: ${err}</li>`;
+            }
+        }
+
+        // Load file list on page load
+        fetchFiles();
     </script>
 </body>
 </html>
+
