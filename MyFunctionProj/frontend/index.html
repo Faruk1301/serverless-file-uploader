@@ -1,31 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>File Upload</title>
+    <title>Azure Function File Upload</title>
 </head>
 <body>
-    <h2>Upload File</h2>
-    <form action="https://myserverlessapi-b9etdhaeddbbd2hp.centralindia-01.azurewebsites.net/api/FileHandler?code=<function-key>" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" required>
+    <h2>Upload File to Azure Function</h2>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="file" id="fileInput" required>
         <button type="submit">Upload</button>
     </form>
-    <hr>
-    <h2>Uploaded Files</h2>
-    <ul id="file-list"></ul>
+    <p id="status"></p>
 
     <script>
-        async function fetchFiles() {
-            const res = await fetch("https://myserverlessapi-b9etdhaeddbbd2hp.centralindia-01.azurewebsites.net/api/FileHandler?code=<function-key>");
-            const data = await res.json();
-            const list = document.getElementById("file-list");
-            list.innerHTML = "";
-            data.files.forEach(file => {
-                const li = document.createElement("li");
-                li.innerHTML = `<a href="${file.url}" target="_blank">${file.name}</a>`;
-                list.appendChild(li);
-            });
-        }
-        fetchFiles();
+        const form = document.getElementById("uploadForm");
+        const status = document.getElementById("status");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById("fileInput");
+            if (!fileInput.files.length) {
+                alert("Please select a file!");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append("file", file);
+
+            // Azure Function URL with function key
+            const url = "https://myserverlessapi-b9etdhaeddbbd2hp.centralindia-01.azurewebsites.net/api/FileHandler?code=<function-key>";
+
+            status.innerText = "Uploading...";
+
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    status.innerHTML = `✅ File uploaded: <a href="${result.url}" target="_blank">${result.filename}</a>`;
+                } else {
+                    status.innerText = `❌ Error: ${result.error || JSON.stringify(result)}`;
+                }
+            } catch (err) {
+                status.innerText = `❌ Upload failed: ${err}`;
+            }
+        });
     </script>
 </body>
 </html>
