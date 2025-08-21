@@ -30,7 +30,7 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
             "REQUEST_METHOD": "POST"
         }
 
-        # werkzeug দিয়ে parse করা
+        logging.info("Step 1️⃣ Parsing form data")
         _, files = werkzeug.formparser.parse_form_data(environ)
         if "file" not in files:
             return func.HttpResponse("❌ No file uploaded!", status_code=400)
@@ -39,9 +39,12 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
         file_name = file.filename
         file_data = file.stream.read()
 
+        logging.info(f"Step 2️⃣ File '{file_name}' parsed successfully")
+
         # --------------------------
         # Blob Storage Upload
         # --------------------------
+        logging.info("Step 3️⃣ Connecting to Blob Storage")
         storage_conn_str = (
             "DefaultEndpointsProtocol=https;"
             "AccountName=mystorageeastasia1301;"
@@ -54,11 +57,12 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
         container_client = blob_service.get_container_client(container_name)
         container_client.upload_blob(name=file_name, data=file_data, overwrite=True)
 
-        logging.info(f"✅ File '{file_name}' uploaded to container '{container_name}'")
+        logging.info(f"Step 4️⃣ File '{file_name}' uploaded to container '{container_name}'")
 
         # --------------------------
         # Send Email via ACS
         # --------------------------
+        logging.info("Step 5️⃣ Sending email via ACS")
         conn_str = (
             "endpoint=https://my-email-service.asiapacific.communication.azure.com/;"
             "accesskey=2UnN2o8oy7QBfS2bnXzGRcqSNVOUDEOtqVCnUxNREve3oIrLCTITJQQJ99BHACULyCpSubbrAAAAAZCSMEoC"
@@ -80,7 +84,7 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
         poller = email_client.begin_send(message)
         result = poller.result()
 
-        logging.info(f"📧 Email send status: {result.status}")
+        logging.info(f"Step 6️⃣ Email send status: {result.status}")
         logging.info(f"📨 Message Id: {result.message_id}")
 
         return func.HttpResponse(
@@ -91,8 +95,10 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         error_details = traceback.format_exc()
         logging.error("❌ Error while processing:\n" + error_details)
-        return func.HttpResponse(
-            f"Error occurred: {str(e)}\n\nTraceback:\n{error_details}",
-            status_code=500
-        )
 
+        # Force response with error details
+        return func.HttpResponse(
+            body=f"Error occurred: {str(e)}\n\nTraceback:\n{error_details}",
+            status_code=500,
+            mimetype="text/plain"
+        )
