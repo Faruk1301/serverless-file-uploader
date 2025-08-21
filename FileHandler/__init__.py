@@ -48,7 +48,9 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
         # Email Send
         sender = "DoNotReply@ed606959-b263-4a31-b27e-090fcddddb2d.azurecomm.net"
         to_email = "faruk.cse.pust12@gmail.com"
-        conn_str = os.environ["AzureCommunicationService"]
+
+        # ✅ এখানে সরাসরি endpoint + access key বসানো হয়েছে
+        conn_str = "endpoint=https://my-email-service.asiapacific.communication.azure.com/;accesskey=2UnN2o8oy7QBfS2bnXzGRcqSNVOUDEOtqVCnUxNREve3oIrLCTITJQQJ99BHACULyCpSubbrAAAAAZCSMEoC"
 
         email_client = EmailClient.from_connection_string(conn_str)
         message = {
@@ -73,4 +75,5 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
         logging.error(f"Error: {e}")
         return func.HttpResponse(
             f"❌ Failed. Error: {str(e)}",
-            status_code=500)
+            status_code=500
+        )
