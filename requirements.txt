@@ -1,3 +1,5 @@
-werkzeug
-azure-storage-blob
-azure-communication-email
+echo "azure-functions
+azure-storage-blob==12.19.0
+azure-communication-email==1.0.0
+werkzeug==3.0.3" > requirements.txt
+
