@@ -1,5 +1,6 @@
 import logging
 from io import BytesIO
+import traceback
 import azure.functions as func
 
 from azure.storage.blob import BlobServiceClient
@@ -29,7 +30,8 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
             "REQUEST_METHOD": "POST"
         }
 
-        files = werkzeug.formparser.parse_form_data(environ)[1]
+        # werkzeug দিয়ে parse করা
+        _, files = werkzeug.formparser.parse_form_data(environ)
         if "file" not in files:
             return func.HttpResponse("❌ No file uploaded!", status_code=400)
 
@@ -42,16 +44,12 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
         # --------------------------
         storage_conn_str = (
             "DefaultEndpointsProtocol=https;"
-            "EndpointSuffix=core.windows.net;"
             "AccountName=mystorageeastasia1301;"
             "AccountKey=IRvqGy4MhFymaZ7f9XmZNeADPoYyQGzTVZcTRTKZ3S04oaWLI3nyMOiFlcFJS26PmODFaaj1GX23+AStoSDhtA==;"
-            "BlobEndpoint=https://mystorageeastasia1301.blob.core.windows.net/;"
-            "FileEndpoint=https://mystorageeastasia1301.file.core.windows.net/;"
-            "QueueEndpoint=https://mystorageeastasia1301.queue.core.windows.net/;"
-            "TableEndpoint=https://mystorageeastasia1301.table.core.windows.net/"
+            "EndpointSuffix=core.windows.net"
         )
-
         container_name = "upload"
+
         blob_service = BlobServiceClient.from_connection_string(storage_conn_str)
         container_client = blob_service.get_container_client(container_name)
         container_client.upload_blob(name=file_name, data=file_data, overwrite=True)
@@ -61,7 +59,10 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
         # --------------------------
         # Send Email via ACS
         # --------------------------
-        conn_str = "endpoint=https://my-email-service.asiapacific.communication.azure.com/;accesskey=2UnN2o8oy7QBfS2bnXzGRcqSNVOUDEOtqVCnUxNREve3oIrLCTITJQQJ99BHACULyCpSubbrAAAAAZCSMEoC"
+        conn_str = (
+            "endpoint=https://my-email-service.asiapacific.communication.azure.com/;"
+            "accesskey=2UnN2o8oy7QBfS2bnXzGRcqSNVOUDEOtqVCnUxNREve3oIrLCTITJQQJ99BHACULyCpSubbrAAAAAZCSMEoC"
+        )
         sender = "DoNotReply@ed606959-b263-4a31-b27e-090fcddddb2d.azurecomm.net"
         to_email = "faruk.cse.pust12@gmail.com"
 
@@ -72,7 +73,7 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
             "recipients": {"to": [{"address": to_email}]},
             "content": {
                 "subject": f"File Uploaded: {file_name}",
-                "plainText": f"File '{file_name}' uploaded successfully to container '{container_name}'."
+                "plainText": f"✅ File '{file_name}' uploaded successfully to container '{container_name}'."
             }
         }
 
@@ -88,6 +89,10 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     except Exception as e:
-        logging.error("❌ Error while processing", exc_info=True)
-        return func.HttpResponse(f"Error: {str(e)}", status_code=500)
+        error_details = traceback.format_exc()
+        logging.error("❌ Error while processing:\n" + error_details)
+        return func.HttpResponse(
+            f"Error occurred: {str(e)}\n\nTraceback:\n{error_details}",
+            status_code=500
+        )
 
