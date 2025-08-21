@@ -1,1 +1,33 @@
+name: Deploy Azure Function App
+
+on:
+  push:
+    branches:
+      - main   # অথবা master, যেটা ব্যবহার করছিস
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Azure Functions Action
+        uses: Azure/functions-action@v1
+        with:
+          app-name: MyFunctionProj   # 👉 এখানে তোর Function App এর নাম বসাতে হবে
+          package: '.'
+        env:
+          AZURE_FUNCTIONAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
 
