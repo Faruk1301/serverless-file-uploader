@@ -2,11 +2,17 @@
   "scriptFile": "__init__.py",
   "bindings": [
     {
-      "name": "myblob",
-      "type": "blobTrigger",
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
       "direction": "in",
-      "path": "upload/{name}",
-      "connection": "AzureWebJobsStorage"
+      "name": "req",
+      "methods": ["post"],
+      "route": "FileHandler"
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "$return"
     }
   ]
 }
