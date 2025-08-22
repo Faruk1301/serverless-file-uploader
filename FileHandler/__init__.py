@@ -1,12 +1,9 @@
 import logging
-from io import BytesIO
 import traceback
-import azure.functions as func
-
 from azure.storage.blob import BlobServiceClient
 from azure.communication.email import EmailClient
-import werkzeug
-from werkzeug.datastructures import FileStorage
+import azure.functions as func
+from requests_toolbelt.multipart import decoder
 
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
@@ -18,28 +15,29 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         # --------------------------
-        # Parse multipart/form-data
+        # Parse multipart/form-data safely
         # --------------------------
         content_type = req.headers.get("Content-Type")
         body = req.get_body()
+        logging.info(f"Content-Type: {content_type}, Body length={len(body)}")
 
-        environ = {
-            "wsgi.input": BytesIO(body),
-            "CONTENT_LENGTH": len(body),
-            "CONTENT_TYPE": content_type,
-            "REQUEST_METHOD": "POST"
-        }
+        multipart_data = decoder.MultipartDecoder(body, content_type)
 
-        logging.info("Step 1️⃣ Parsing form data")
-        _, files = werkzeug.formparser.parse_form_data(environ)
-        if "file" not in files:
+        file_name = None
+        file_data = None
+
+        for part in multipart_data.parts:
+            content_disposition = part.headers.get(b"Content-Disposition", b"").decode()
+            if "filename=" in content_disposition:
+                # Extract filename
+                file_name = content_disposition.split("filename=")[1].strip('"')
+                file_data = part.content
+                break
+
+        if not file_name or not file_data:
             return func.HttpResponse("❌ No file uploaded!", status_code=400)
 
-        file: FileStorage = files["file"]
-        file_name = file.filename
-        file_data = file.stream.read()
-
-        logging.info(f"Step 2️⃣ File '{file_name}' parsed successfully")
+        logging.info(f"Step 2️⃣ File '{file_name}' parsed successfully (size={len(file_data)} bytes)")
 
         # --------------------------
         # Blob Storage Upload
@@ -55,8 +53,14 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
 
         blob_service = BlobServiceClient.from_connection_string(storage_conn_str)
         container_client = blob_service.get_container_client(container_name)
-        container_client.upload_blob(name=file_name, data=file_data, overwrite=True)
 
+        try:
+            container_client.create_container()
+            logging.info(f"Container '{container_name}' created")
+        except Exception:
+            logging.info(f"Container '{container_name}' already exists")
+
+        container_client.upload_blob(name=file_name, data=file_data, overwrite=True)
         logging.info(f"Step 4️⃣ File '{file_name}' uploaded to container '{container_name}'")
 
         # --------------------------
@@ -84,8 +88,7 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
         poller = email_client.begin_send(message)
         result = poller.result()
 
-        logging.info(f"Step 6️⃣ Email send status: {result.status}")
-        logging.info(f"📨 Message Id: {result.message_id}")
+        logging.info(f"Step 6️⃣ Email send status: {result.status}, MessageId={result.message_id}")
 
         return func.HttpResponse(
             f"✅ File '{file_name}' uploaded & email sent to {to_email}",
@@ -96,9 +99,9 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
         error_details = traceback.format_exc()
         logging.error("❌ Error while processing:\n" + error_details)
 
-        # Force response with error details
         return func.HttpResponse(
             body=f"Error occurred: {str(e)}\n\nTraceback:\n{error_details}",
             status_code=500,
             mimetype="text/plain"
         )
+
