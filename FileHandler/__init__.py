@@ -6,16 +6,12 @@ import azure.functions as func
 from requests_toolbelt.multipart import decoder
 
 
-app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
-
-@app.function_name(name="FileHandler")
-@app.route(route="FileHandler", methods=["POST"])
-def file_handler(req: func.HttpRequest) -> func.HttpResponse:
+def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info("📩 File upload request received")
 
     try:
         # --------------------------
-        # Parse multipart/form-data safely
+        # Parse multipart/form-data
         # --------------------------
         content_type = req.headers.get("Content-Type")
         body = req.get_body()
@@ -29,7 +25,6 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
         for part in multipart_data.parts:
             content_disposition = part.headers.get(b"Content-Disposition", b"").decode()
             if "filename=" in content_disposition:
-                # Extract filename
                 file_name = content_disposition.split("filename=")[1].strip('"')
                 file_data = part.content
                 break
@@ -104,4 +99,3 @@ def file_handler(req: func.HttpRequest) -> func.HttpResponse:
             status_code=500,
             mimetype="text/plain"
         )
-
